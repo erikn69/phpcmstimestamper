@@ -2,10 +2,38 @@
 
 namespace Blobfish;
 
-use phpseclib\File\ASN1;
+class_alias('\phpseclib'.(class_exists(\phpseclib3\File\ASN1::class) ? '3' :'').'\File\ASN1', '\Blobfish\ASN1');
 
 class CmsTimestamper
 {
+    private static function _extractBER($cmsString){
+        if (class_exists(\phpseclib3\File\ASN1::class)) {
+            return ASN1::extractBER($cmsString);
+        }
+
+        $x509 = new \phpseclib\File\X509();
+        return $x509->_extractBER($cmsString);
+    }
+
+    private static function _decodeBER($cmsBytes){
+        if (class_exists(\phpseclib3\File\ASN1::class)) {
+            return ASN1::decodeBER($cmsBytes);
+        }
+
+        $phpseclibAsn1 = new ASN1();
+        return $phpseclibAsn1->decodeBER($cmsBytes);
+    }
+
+    private static function _encodeDER($contentInfo, $asn1Mapping){
+        // NOTE that we are using a preceding @ symbol, otherwise "PHP Notice:  Undefined variable: temp in .../vendor/phpseclib/phpseclib/phpseclib/File/ASN1.php on line 1096" would be produced because of the hack in the method 'importedValueTypeDeclaration'.
+        if (class_exists(\phpseclib3\File\ASN1::class)) {
+            return @\phpseclib3\File\ASN1::encodeDER($contentInfo, $asn1Mapping);
+        }
+
+        $phpseclibAsn1 = new ASN1();
+        return @$phpseclibAsn1->encodeDER($contentInfo, $asn1Mapping);
+    }
+
     // NOTE that this is hack!. TODO check better the resulting inner workings of phpseclib because of this.
     private static function importedValueTypeDeclaration($tagNumber)
     {
@@ -30,10 +58,8 @@ class CmsTimestamper
     public static function addTimestampToCms($originalCms, $tsaUrl)
     {
         // Loading the original CMS.
-        $x509 = new \phpseclib\File\X509();
-        $originalCmsBytes = $x509->_extractBER($originalCms);
-        $phpseclibAsn1 = new ASN1();
-        $decodedOriginalCms = $phpseclibAsn1->decodeBER($originalCmsBytes);
+        $originalCmsBytes = static::_extractBER($originalCms);
+        $decodedOriginalCms = static::_decodeBER($originalCmsBytes);
         // TODO check if these hardcoded indexes won't produce problems.
         $originalContentInfo = $decodedOriginalCms[0]['content'];
         $originalSignedData = $originalContentInfo[1]['content'][0]['content'];
@@ -140,8 +166,7 @@ class CmsTimestamper
                 ]
             ]
         ];
-        // NOTE that we are using a preceding @ symbol, otherwise "PHP Notice:  Undefined variable: temp in .../vendor/phpseclib/phpseclib/phpseclib/File/ASN1.php on line 1096" would be produced because of the hack in the method 'importedValueTypeDeclaration'.
-        $updatedCmsBytes = @$phpseclibAsn1->encodeDER($updatedContentInfo, $asn1Mapping);
+        $updatedCmsBytes = static::_encodeDER($updatedContentInfo, $asn1Mapping);
         return "-----BEGIN CMS-----\r\n" . chunk_split(base64_encode($updatedCmsBytes), 64) . '-----END CMS-----';
     }
 //    }

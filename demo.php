@@ -37,7 +37,6 @@ GQN/Ii/M/Py2SeIa8bREZDVn801ONwKkB454v6itgVGhXw8qy+CjQU6akQcyci0c
 1lUaWopfF7uZf5LXZt2Ru5UPr+51ULJRcEeUTA==
 -----END CMS-----";
 echo "Updating PKCS #7/CMS...\n";
-$updatedCms = CmsTimestamper::addTimestampToCms($originalCmsAsPem, "http://tsa.starfieldtech.com");
+$updatedCms = CmsTimestamper::addTimestampToCms($originalCmsAsPem, "https://freetsa.org/tsr");
 echo "PKCS #7/CMS updated.\n";
-echo $updatedCms;
-
+echo $updatedCms . "\n";
